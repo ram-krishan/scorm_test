@@ -5,20 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SCORM Player</title>
 <style>
-  body { margin: 0; font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
-  header { padding: 8px 16px; background: #111827; color: #fff; display: flex; gap: 16px; align-items: center; }
-  header a { color: #93c5fd; }
-  main { flex: 1; display: flex; min-height: 0; }
-  iframe { flex: 1; border: 0; }
-  #log { width: 340px; overflow: auto; font: 12px monospace; background: #f9fafb; border-left: 1px solid #ddd; padding: 8px; }
-  @media (max-width: 800px) { main { flex-direction: column; } #log { width: auto; height: 160px; } }
+  body { margin: 0; font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; background: #f3f4f6; }
+  header { padding: 10px 16px; background: #111827; color: #fff; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  header a { color: #93c5fd; white-space: nowrap; }
+  .badge { font-size: 12px; background: #374151; padding: 2px 8px; border-radius: 999px; margin-left: 6px; font-weight: normal; }
+
+  /* learner details bar */
+  #details { display: flex; flex-wrap: wrap; gap: 8px 28px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+  #details div { display: flex; flex-direction: column; min-width: 0; }
+  #details span { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+  #details b { font-weight: 600; overflow-wrap: anywhere; }
+  #details code { font-size: 13px; overflow-wrap: anywhere; }
+
+  main { flex: 1; display: flex; gap: 16px; padding: 16px; min-height: 0; }
+  /* course fills the remaining space, with a margin around it */
+  .stage { flex: 1; display: flex; min-width: 0; min-height: 0; }
+  iframe { flex: 1; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+  #log { width: 300px; overflow: auto; font: 12px monospace; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+  @media (max-width: 800px) { main { flex-direction: column; } .stage { min-height: 60vh; } #log { width: auto; height: 160px; } }
 </style>
 <script src="/lib/scorm-again.min.js"></script>
 </head>
 <body>
-<header><a href="/">← Courses</a><strong id="title">Loading…</strong><span id="state"></span></header>
+<header><a href="/">← Courses</a><strong id="title">Loading…</strong></header>
+<section id="details">
+  <div><span>Learner</span><b id="dName">—</b></div>
+  <div><span>User ID</span><code id="dId">—</code></div>
+  <div><span>Status</span><b id="dStatus">—</b></div>
+  <div><span>Score</span><b id="dScore">—</b></div>
+  <div><span>Session</span><b id="dSession">—</b></div>
+</section>
 <main>
-  <iframe id="course" title="Course"></iframe>
+  <div class="stage"><iframe id="course" title="Course"></iframe></div>
   <div id="log"><b>SCORM calls</b><br></div>
 </main>
 
@@ -30,12 +48,17 @@ const name = params.get("name") || user;
 
 const logEl = document.getElementById("log");
 const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;") + "<br>"); logEl.scrollTop = 1e9; };
+const show = (id, text) => { document.getElementById(id).textContent = text === "" || text == null ? "—" : text; };
 
 (async function start() {
   const course = await fetch(`/api/courses/${courseId}`).then(r => r.json());
   const saved = await fetch(`/api/progress/${courseId}/${user}`).then(r => r.json());
-  document.getElementById("title").textContent = `${course.title} (SCORM ${course.version})`;
-  document.getElementById("state").textContent = `${name} · ${user}`;
+  const title = document.getElementById("title");
+  title.textContent = course.title;
+  title.insertAdjacentHTML("beforeend", `<span class="badge">SCORM ${course.version}</span>`);
+  show("dName", name);
+  show("dId", user);
+  show("dSession", saved ? "Resumed" : "New attempt");
 
   const settings = {
     lmsCommitUrl: `/api/progress/${courseId}/${user}`,
@@ -48,7 +71,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
   // queued (sent via sendBeacon, so it survives navigation). Like an LMS, take the learner back to the list.
   const endSession = (call) => {
     log(`${call} → saved. Returning to course list…`);
-    document.getElementById("state").textContent += " · session ended";
+    show("dSession", "Ended — returning to list…");
     setTimeout(() => { location.href = "/"; }, 1500);
   };
 
@@ -57,7 +80,14 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     api = new Scorm12API(settings);
     api.loadFromJSON(saved?.cmi || { core: { student_id: user, student_name: name } });
     window.API = api;                         // SCORM 1.2 courses look for window.API
-    api.on("LMSSetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
+    const core = saved?.cmi?.core;
+    show("dStatus", core?.lesson_status || "not attempted");
+    show("dScore", core?.score?.raw);
+    api.on("LMSSetValue.cmi.*", (el, v) => {
+      log(`Set ${el} = ${String(v).slice(0, 80)}`);
+      if (el === "cmi.core.lesson_status") show("dStatus", v);
+      if (el === "cmi.core.score.raw") show("dScore", v);
+    });
     api.on("LMSInitialize", () => log("LMSInitialize"));
     api.on("LMSCommit", () => log("LMSCommit → saved"));
     api.on("LMSFinish", () => endSession("LMSFinish"));
@@ -65,7 +95,18 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     api = new Scorm2004API(settings);
     api.loadFromJSON(saved?.cmi || { learner_id: user, learner_name: name });
     window.API_1484_11 = api;                 // SCORM 2004 courses look for window.API_1484_11
-    api.on("SetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
+    // status = completion / success, skipping "unknown"
+    const status = { completion: saved?.cmi?.completion_status, success: saved?.cmi?.success_status };
+    const showStatus = () => show("dStatus",
+      [status.completion, status.success].filter((s) => s && s !== "unknown").join(" / ") || "not attempted");
+    showStatus();
+    show("dScore", saved?.cmi?.score?.raw);
+    api.on("SetValue.cmi.*", (el, v) => {
+      log(`Set ${el} = ${String(v).slice(0, 80)}`);
+      if (el === "cmi.completion_status") { status.completion = v; showStatus(); }
+      if (el === "cmi.success_status") { status.success = v; showStatus(); }
+      if (el === "cmi.score.raw") show("dScore", v);
+    });
     api.on("Initialize", () => log("Initialize"));
     api.on("Commit", () => log("Commit → saved"));
     api.on("Terminate", () => endSession("Terminate"));
