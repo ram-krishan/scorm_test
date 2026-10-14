@@ -1,104 +1,98 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Sample SCORM 1.2 Course</title>
-<style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; }
-  .q { margin: 16px 0; } button { padding: 8px 16px; margin-top: 12px; }
-  #status { margin-top: 16px; padding: 10px; background: #f3f4f6; border-radius: 6px; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>General Knowledge Basics</title>
+<link rel="stylesheet" href="course.css">
 </head>
 <body>
-<h2>Sample Course: Your Basics</h2>
-<p>Answer 3 questions. Passing score is 60%. Your answers are saved, so close and reopen to test resume.</p>
+<header class="top">
+  <div class="brand">🌍 General Knowledge Basics</div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="pageno" id="pageno"></div>
+</header>
 
-<div class="q">1. What is your name?<br>
-  <label><input type="radio" name="q1" value="ram"> Ram</label>
-  <label><input type="radio" name="q1" value="shyam"> Shyam</label></div>
-<div class="q">2. Where do you leave?<br>
-  <label><input type="radio" name="q2" value="indore"> Indore</label>
-  <label><input type="radio" name="q2" value="ujjain"> Ujjain</label></div>
-<div class="q">3. What is your hobby<br>
-  <label><input type="radio" name="q3" value="music"> Music</label>
-  <label><input type="radio" name="q3" value="cricket"> Cricket</label></div>
+<main id="pages">
 
-<button onclick="submitQuiz()">Submit</button>
-<button onclick="exitCourse()">Exit</button>
-<div id="status">Connecting to LMS...</div>
+  <section class="page" data-title="Welcome">
+    <h1>Welcome, <span id="learnerName">Learner</span>! 👋</h1>
+    <p>This short course covers a few everyday facts about our world. It takes about 5 minutes.</p>
+    <div class="card">
+      <h3>How it works</h3>
+      <ol>
+        <li>Read three short lesson pages.</li>
+        <li>Answer 10 very easy questions.</li>
+        <li>Score <b>60% or more</b> to pass.</li>
+      </ol>
+    </div>
+    <p class="muted">You can leave at any time with <b>Exit</b>. Your page and answers are saved, and you'll continue where you left off.</p>
+  </section>
 
-<script>
-// --- Find the SCORM 1.2 API by walking up parent windows (standard discovery) ---
-function findAPI(win) {
-  var tries = 0;
-  while (win && !win.API && win.parent && win.parent !== win && tries++ < 10) win = win.parent;
-  return win && win.API ? win.API : (window.opener && window.opener.API) || null;
-}
-var API = findAPI(window);
-var answers = { q1: "b", q2: "a", q3: "b" };
-var statusEl = document.getElementById("status");
+  <section class="page" data-title="Our Planet">
+    <h1>🌎 Our Planet</h1>
+    <p>We live on planet <b>Earth</b>, the third planet from the Sun.</p>
+    <div class="facts">
+      <div class="fact"><span>☀️</span><p>The <b>Sun</b> is a <b>star</b>. It gives Earth light and heat.</p></div>
+      <div class="fact"><span>🗺️</span><p>Earth has <b>7 continents</b>: Asia, Africa, North America, South America, Antarctica, Europe and Australia.</p></div>
+      <div class="fact"><span>🌊</span><p>The <b>Pacific Ocean</b> is the largest ocean on Earth.</p></div>
+      <div class="fact"><span>🌤️</span><p>On a clear day the sky looks <b>blue</b>.</p></div>
+    </div>
+  </section>
 
-function log(msg) { statusEl.textContent = msg; }
+  <section class="page" data-title="Animals & Nature">
+    <h1>🐄 Animals &amp; Nature</h1>
+    <p>Animals and plants give us many useful things.</p>
+    <div class="facts">
+      <div class="fact"><span>🥛</span><p>A <b>cow</b> gives us milk.</p></div>
+      <div class="fact"><span>🍯</span><p><b>Bees</b> make honey from the nectar of flowers.</p></div>
+      <div class="fact"><span>🌱</span><p>Plants need <b>sunlight</b>, water and air to grow.</p></div>
+      <div class="fact"><span>🐘</span><p>The <b>elephant</b> is the largest land animal.</p></div>
+    </div>
+  </section>
 
-if (!API) {
-  log("No SCORM API found. Open this course through the player page.");
-} else {
-  API.LMSInitialize("");
-  var name = API.LMSGetValue("cmi.core.student_name") || "Learner";
-  var prev = API.LMSGetValue("cmi.core.lesson_status");
-  var saved = API.LMSGetValue("cmi.suspend_data");
+  <section class="page" data-title="Everyday Facts">
+    <h1>📅 Everyday Facts</h1>
+    <p>Some numbers we use every day.</p>
+    <div class="facts">
+      <div class="fact"><span>7️⃣</span><p>A week has <b>7 days</b>.</p></div>
+      <div class="fact"><span>🗓️</span><p>A year has <b>12 months</b>.</p></div>
+      <div class="fact"><span>💧</span><p>Water boils at <b>100 °C</b> (at sea level).</p></div>
+      <div class="fact"><span>🌈</span><p>A rainbow has <b>7 colours</b>.</p></div>
+    </div>
+    <p class="muted">Next up: the quiz. Ready?</p>
+  </section>
 
-  // Resume: restore saved answers
-  if (saved) {
-    try {
-      var s = JSON.parse(saved);
-      Object.keys(s).forEach(function (k) {
-        var el = document.querySelector('input[name="' + k + '"][value="' + s[k] + '"]');
-        if (el) el.checked = true;
-      });
-    } catch (e) {}
-  }
-  if (!prev || prev === "not attempted") API.LMSSetValue("cmi.core.lesson_status", "incomplete");
-  API.LMSSetValue("cmi.core.lesson_location", "quiz");
-  API.LMSCommit("");
-  log("Hello " + name + ". Previous status: " + (prev || "not attempted"));
+  <section class="page quiz" data-title="Quiz — Part 1" data-questions="0-4">
+    <h1>📝 Quiz — Part 1</h1>
+    <p class="muted">Questions 1–5. Your answers are saved as you go.</p>
+    <div class="questions"></div>
+  </section>
 
-  // Save answers as learner clicks
-  document.querySelectorAll("input[type=radio]").forEach(function (r) {
-    r.addEventListener("change", function () {
-      var s = {};
-      ["q1", "q2", "q3"].forEach(function (q) {
-        var c = document.querySelector('input[name="' + q + '"]:checked');
-        if (c) s[q] = c.value;
-      });
-      API.LMSSetValue("cmi.suspend_data", JSON.stringify(s));
-      API.LMSCommit("");
-    });
-  });
-}
+  <section class="page quiz" data-title="Quiz — Part 2" data-questions="5-9">
+    <h1>📝 Quiz — Part 2</h1>
+    <p class="muted">Questions 6–10. Click <b>Submit answers</b> when you're done.</p>
+    <div class="questions"></div>
+    <p class="warn" id="warn" hidden></p>
+  </section>
 
-function submitQuiz() {
-  if (!API) return;
-  var correct = 0;
-  Object.keys(answers).forEach(function (q) {
-    var c = document.querySelector('input[name="' + q + '"]:checked');
-    if (c && c.value === answers[q]) correct++;
-  });
-  var score = Math.round((correct / 3) * 100);
-  API.LMSSetValue("cmi.core.score.raw", String(score));
-  API.LMSSetValue("cmi.core.score.min", "0");
-  API.LMSSetValue("cmi.core.score.max", "100");
-  API.LMSSetValue("cmi.core.lesson_status", score >= 60 ? "passed" : "failed");
-  API.LMSCommit("");
-  log("Score: " + score + "% — " + (score >= 60 ? "Passed" : "Failed"));
-}
+  <section class="page" data-title="Results">
+    <h1 id="resultTitle">Results</h1>
+    <div class="score card" id="scoreCard"></div>
+    <h3>Your answers</h3>
+    <ol class="review" id="review"></ol>
+    <button class="btn secondary" id="retake">↺ Retake quiz</button>
+  </section>
 
-function exitCourse() {
-  if (!API) return;
-  API.LMSSetValue("cmi.core.exit", "suspend");
-  API.LMSFinish("");
-  log("Course closed. Reload the player to test resume.");
-}
-</script>
+</main>
+
+<footer class="nav">
+  <button class="btn secondary" id="prev">← Previous</button>
+  <span class="status" id="status">Connecting…</span>
+  <button class="btn ghost" id="exit">Exit</button>
+  <button class="btn" id="next">Next →</button>
+</footer>
+
+<script src="course.js"></script>
 </body>
 </html>

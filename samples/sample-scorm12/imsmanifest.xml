@@ -12,9 +12,9 @@
   </metadata>
   <organizations default="ORG-1">
     <organization identifier="ORG-1">
-      <title>Sample SCORM 1.2 Course</title>
+      <title>General Knowledge Basics (SCORM 1.2)</title>
       <item identifier="ITEM-1" identifierref="RES-1">
-        <title>Basics Quiz</title>
+        <title>General Knowledge Basics</title>
         <adlcp:masteryscore>60</adlcp:masteryscore>
       </item>
     </organization>
@@ -22,6 +22,8 @@
   <resources>
     <resource identifier="RES-1" type="webcontent" adlcp:scormtype="sco" href="index.html">
       <file href="index.html"/>
+      <file href="course.js"/>
+      <file href="course.css"/>
     </resource>
   </resources>
 </manifest>

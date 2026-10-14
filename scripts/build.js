@@ -20,7 +20,7 @@ const LIB_DIR = path.join(ROOT, "public", "lib");
 for (const file of fs.readdirSync(PKG_DIR)) {
   if (!file.toLowerCase().endsWith(".zip")) continue;
   const dest = path.join(COURSE_DIR, path.basename(file, ".zip"));
-  if (fs.existsSync(dest)) continue;
+  fs.rmSync(dest, { recursive: true, force: true }); // always re-extract so an updated zip replaces the old files
   new AdmZip(path.join(PKG_DIR, file)).extractAllTo(dest, true);
   console.log("Extracted", file);
 }

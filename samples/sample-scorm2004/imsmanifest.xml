@@ -9,15 +9,17 @@
   </metadata>
   <organizations default="ORG-1">
     <organization identifier="ORG-1">
-      <title>Sample SCORM 2004 Course</title>
+      <title>General Knowledge Basics (SCORM 2004)</title>
       <item identifier="ITEM-1" identifierref="RES-1">
-        <title>Basics Quiz</title>
+        <title>General Knowledge Basics</title>
       </item>
     </organization>
   </organizations>
   <resources>
     <resource identifier="RES-1" type="webcontent" adlcp:scormType="sco" href="index.html">
       <file href="index.html"/>
+      <file href="course.js"/>
+      <file href="course.css"/>
     </resource>
   </resources>
 </manifest>
