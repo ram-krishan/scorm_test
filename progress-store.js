@@ -7,9 +7,12 @@ const path = require("path");
 
 const key = (id, user) => `${id}__${user}`.replace(/[^\w.-]/g, "_");
 
-// The Vercel Marketplace integration sets KV_REST_API_*; a direct Upstash setup uses UPSTASH_REDIS_REST_*
-const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
-const token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+// The Vercel Marketplace integration sets <prefix>KV_REST_API_URL / <prefix>KV_REST_API_TOKEN,
+// where <prefix> is the optional custom prefix chosen when connecting (e.g. "scorm_test_").
+// A direct Upstash setup uses UPSTASH_REDIS_REST_*.
+const kvPrefix = Object.keys(process.env).find((k) => k.endsWith("KV_REST_API_URL"))?.slice(0, -"KV_REST_API_URL".length);
+const url = process.env.UPSTASH_REDIS_REST_URL || (kvPrefix != null && process.env[`${kvPrefix}KV_REST_API_URL`]);
+const token = process.env.UPSTASH_REDIS_REST_TOKEN || (kvPrefix != null && process.env[`${kvPrefix}KV_REST_API_TOKEN`]);
 
 function redisStore() {
   const { Redis } = require("@upstash/redis");
