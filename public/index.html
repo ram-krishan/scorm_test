@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCORM Courses</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; }
+  li { margin: 10px 0; } small { color: #666; }
+</style>
+</head>
+<body>
+<h2>SCORM Courses</h2>
+<p>Learner ID: <input id="user" value="ram"></p>
+<ul id="list"><li>Loading...</li></ul>
+<script>
+fetch("/api/courses").then(r => r.json()).then(courses => {
+  const ul = document.getElementById("list");
+  ul.innerHTML = courses.length ? "" : "<li>No courses. Put .zip files in ./packages and restart.</li>";
+  courses.forEach(c => {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.textContent = c.title;
+    a.href = "#";
+    a.onclick = () => { location.href = `/player.html?course=${encodeURIComponent(c.id)}&user=${encodeURIComponent(document.getElementById("user").value)}`; };
+    li.append(a, " ");
+    li.insertAdjacentHTML("beforeend", `<small>SCORM ${c.version} · ${c.launch}</small>`);
+    ul.append(li);
+  });
+});
+</script>
+</body>
+</html>

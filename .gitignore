@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Generated at runtime by server.js
+courses/
+data/
+
+# Build output
+deploy/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+*.log
+.env

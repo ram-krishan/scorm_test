@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCORM Player</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; display: flex; flex-direction: column; height: 100vh; }
+  header { padding: 8px 16px; background: #111827; color: #fff; display: flex; gap: 16px; align-items: center; }
+  header a { color: #93c5fd; }
+  main { flex: 1; display: flex; min-height: 0; }
+  iframe { flex: 1; border: 0; }
+  #log { width: 340px; overflow: auto; font: 12px monospace; background: #f9fafb; border-left: 1px solid #ddd; padding: 8px; }
+  @media (max-width: 800px) { main { flex-direction: column; } #log { width: auto; height: 160px; } }
+</style>
+<script src="/lib/scorm-again.min.js"></script>
+</head>
+<body>
+<header><a href="/">← Courses</a><strong id="title">Loading…</strong><span id="state"></span></header>
+<main>
+  <iframe id="course" title="Course"></iframe>
+  <div id="log"><b>SCORM calls</b><br></div>
+</main>
+
+<script>
+const params = new URLSearchParams(location.search);
+const courseId = params.get("course");
+const user = params.get("user") || "guest";
+
+const logEl = document.getElementById("log");
+const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;") + "<br>"); logEl.scrollTop = 1e9; };
+
+(async function start() {
+  const course = await fetch(`/api/courses/${courseId}`).then(r => r.json());
+  const saved = await fetch(`/api/progress/${courseId}/${user}`).then(r => r.json());
+  document.getElementById("title").textContent = `${course.title} (SCORM ${course.version})`;
+
+  const settings = {
+    lmsCommitUrl: `/api/progress/${courseId}/${user}`,
+    autocommit: true,
+    autocommitSeconds: 30,
+    logLevel: 4 // errors only in console
+  };
+
+  let api;
+  if (course.version === "1.2") {
+    api = new Scorm12API(settings);
+    api.loadFromJSON(saved?.cmi || { core: { student_id: user, student_name: user } });
+    window.API = api;                         // SCORM 1.2 courses look for window.API
+    api.on("LMSSetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
+    api.on("LMSInitialize", () => log("LMSInitialize"));
+    api.on("LMSCommit", () => log("LMSCommit → saved"));
+    api.on("LMSFinish", () => log("LMSFinish"));
+  } else {
+    api = new Scorm2004API(settings);
+    api.loadFromJSON(saved?.cmi || { learner_id: user, learner_name: user });
+    window.API_1484_11 = api;                 // SCORM 2004 courses look for window.API_1484_11
+    api.on("SetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
+    api.on("Initialize", () => log("Initialize"));
+    api.on("Commit", () => log("Commit → saved"));
+    api.on("Terminate", () => log("Terminate"));
+  }
+
+  log(saved ? "Found saved progress — resuming" : "New attempt");
+  // Load the course only AFTER the API exists
+  document.getElementById("course").src = `/courses/${courseId}/${course.launch}`;
+})();
+</script>
+</body>
+</html>
