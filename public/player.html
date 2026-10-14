@@ -26,6 +26,7 @@
 const params = new URLSearchParams(location.search);
 const courseId = params.get("course");
 const user = params.get("user") || "guest";
+const name = params.get("name") || user;
 
 const logEl = document.getElementById("log");
 const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;") + "<br>"); logEl.scrollTop = 1e9; };
@@ -34,6 +35,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
   const course = await fetch(`/api/courses/${courseId}`).then(r => r.json());
   const saved = await fetch(`/api/progress/${courseId}/${user}`).then(r => r.json());
   document.getElementById("title").textContent = `${course.title} (SCORM ${course.version})`;
+  document.getElementById("state").textContent = `${name} · ${user}`;
 
   const settings = {
     lmsCommitUrl: `/api/progress/${courseId}/${user}`,
@@ -45,7 +47,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
   let api;
   if (course.version === "1.2") {
     api = new Scorm12API(settings);
-    api.loadFromJSON(saved?.cmi || { core: { student_id: user, student_name: user } });
+    api.loadFromJSON(saved?.cmi || { core: { student_id: user, student_name: name } });
     window.API = api;                         // SCORM 1.2 courses look for window.API
     api.on("LMSSetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
     api.on("LMSInitialize", () => log("LMSInitialize"));
@@ -53,7 +55,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     api.on("LMSFinish", () => log("LMSFinish"));
   } else {
     api = new Scorm2004API(settings);
-    api.loadFromJSON(saved?.cmi || { learner_id: user, learner_name: user });
+    api.loadFromJSON(saved?.cmi || { learner_id: user, learner_name: name });
     window.API_1484_11 = api;                 // SCORM 2004 courses look for window.API_1484_11
     api.on("SetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
     api.on("Initialize", () => log("Initialize"));

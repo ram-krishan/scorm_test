@@ -31,10 +31,42 @@ app.get("/api/progress/:id/:user", async (req, res) => {
   res.json(await store.get(req.params.id, req.params.user));
 });
 
+// status / score / learner name from a saved cmi, for SCORM 1.2 (cmi.core.*) and 2004
+function summarize(cmi = {}) {
+  if (cmi.core) {
+    const status = cmi.core.lesson_status || "not attempted";
+    return { name: cmi.core.student_name, status, score: cmi.core.score?.raw ?? "",
+             completed: ["completed", "passed", "failed"].includes(status) };
+  }
+  const known = (s) => (s && s !== "unknown" ? s : "");
+  const status = [known(cmi.completion_status), known(cmi.success_status)].filter(Boolean).join(" / ") || "incomplete";
+  return { name: cmi.learner_name, status, score: cmi.score?.raw ?? "",
+           completed: cmi.completion_status === "completed" || ["passed", "failed"].includes(cmi.success_status) };
+}
+
+// every course this learner has saved progress for (list page "Resume" table)
+app.get("/api/users/:user/progress", async (req, res) => {
+  const saved = await Promise.all(courses.map((c) => store.get(c.id, req.params.user)));
+  res.json(courses.flatMap((c, i) => {
+    if (!saved[i]?.cmi) return [];
+    const { name, status, score } = summarize(saved[i].cmi);
+    const { startedAt = null, completedAt = null, savedAt = null } = saved[i];
+    return [{ courseId: c.id, title: c.title, name, status, score, startedAt, completedAt, savedAt }];
+  }));
+});
+
 // scorm-again POSTs here on every commit
 app.post("/api/progress/:id/:user", async (req, res) => {
   if (!req.body || typeof req.body !== "object") return res.status(400).json({ result: false, errorCode: 101 });
-  await store.set(req.params.id, req.params.user, req.body);
+  // keep the first-save time as startedAt, and the first time the course reports completion as completedAt
+  const prev = await store.get(req.params.id, req.params.user);
+  const now = new Date().toISOString();
+  await store.set(req.params.id, req.params.user, {
+    ...req.body,
+    startedAt: prev?.startedAt ?? now,
+    completedAt: prev?.completedAt ?? (summarize(req.body.cmi).completed ? now : null),
+    savedAt: now,
+  });
   const core = req.body?.cmi?.core;
   console.log(`[commit] ${req.params.id} / ${req.params.user}`,
     core ? `status=${core.lesson_status} score=${core.score?.raw ?? ""}` :

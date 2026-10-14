@@ -5,29 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SCORM Courses</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 32px auto; padding: 0 16px; }
-  li { margin: 10px 0; } small { color: #666; }
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 32px auto; padding: 0 16px; }
+  li { margin: 10px 0; } small, .muted { color: #666; }
+  .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px 16px; margin: 16px 0; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; white-space: nowrap; }
+  th { background: #f9fafb; font-weight: 600; }
+  code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
+  button { cursor: pointer; }
+  .link { background: none; border: 0; color: #2563eb; padding: 0; text-decoration: underline; font: inherit; }
 </style>
 </head>
 <body>
 <h2>SCORM Courses</h2>
-<p>Learner ID: <input id="user" value="ram"></p>
-<ul id="list"><li>Loading...</li></ul>
+
+<!-- Step 1: no learner yet -> ask for a name, generate a unique ID -->
+<form id="nameForm" class="card" hidden>
+  <label>Your name <input id="name" required maxlength="60" autocomplete="name"></label>
+  <button>Continue</button>
+</form>
+
+<!-- Step 2: learner known -->
+<div id="me" class="card" hidden>
+  Learner: <b id="meName"></b> · ID: <code id="meId"></code>
+  <button type="button" id="switch" class="link">Not you?</button>
+</div>
+
+<section id="progressSection" hidden>
+  <h3>Your progress</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Name</th><th>User ID</th><th>Course</th><th>Status</th><th>Score</th>
+        <th>Started at</th><th>Completed at</th><th></th>
+      </tr></thead>
+      <tbody id="progress"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="coursesSection" hidden>
+  <h3>All courses</h3>
+  <ul id="list"><li>Loading...</li></ul>
+</section>
+
 <script>
-fetch("/api/courses").then(r => r.json()).then(courses => {
+// The learner (name + generated ID) is remembered in this browser; their progress lives on the server.
+const STORAGE_KEY = "scormLearner";
+const loadLearner = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } };
+const saveLearner = (l) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(l)); } catch {} };
+const clearLearner = () => { try { localStorage.removeItem(STORAGE_KEY); } catch {} };
+
+// e.g. "L-7f3k9q2m" — 8 random base-36 chars
+const newLearnerId = () =>
+  "L-" + Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => (b % 36).toString(36)).join("");
+
+const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
+const cell = (text) => { const td = document.createElement("td"); td.textContent = text; return td; };
+const playerUrl = (learner, courseId) =>
+  `/player.html?course=${encodeURIComponent(courseId)}&user=${encodeURIComponent(learner.id)}&name=${encodeURIComponent(learner.name)}`;
+
+let coursesPromise = fetch("/api/courses").then((r) => r.json());
+
+async function render() {
+  const learner = loadLearner();
+  document.getElementById("nameForm").hidden = !!learner;
+  document.getElementById("me").hidden = !learner;
+  document.getElementById("progressSection").hidden = true;
+  document.getElementById("coursesSection").hidden = !learner;
+  if (!learner) return document.getElementById("name").focus();
+
+  document.getElementById("meName").textContent = learner.name;
+  document.getElementById("meId").textContent = learner.id;
+
+  const [courses, progress] = await Promise.all([
+    coursesPromise,
+    fetch(`/api/users/${encodeURIComponent(learner.id)}/progress`).then((r) => r.json()),
+  ]);
+
+  // Progress table: one row per course this learner has started
+  const tbody = document.getElementById("progress");
+  tbody.innerHTML = "";
+  progress.forEach((p) => {
+    const tr = document.createElement("tr");
+    tr.append(cell(p.name || learner.name), cell(learner.id), cell(p.title), cell(p.status),
+              cell(p.score === "" ? "—" : p.score), cell(fmt(p.startedAt)), cell(fmt(p.completedAt)));
+    const td = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.textContent = "Resume";
+    btn.onclick = () => { location.href = playerUrl(learner, p.courseId); };
+    td.append(btn);
+    tr.append(td);
+    tbody.append(tr);
+  });
+  document.getElementById("progressSection").hidden = progress.length === 0;
+
+  // All courses: Start, or Resume if already started
+  const started = new Set(progress.map((p) => p.courseId));
   const ul = document.getElementById("list");
-  ul.innerHTML = courses.length ? "" : "<li>No courses. Put .zip files in ./packages and restart.</li>";
-  courses.forEach(c => {
+  ul.innerHTML = courses.length ? "" : "<li>No courses. Put .zip files in ./packages and rebuild.</li>";
+  courses.forEach((c) => {
     const li = document.createElement("li");
-    const a = document.createElement("a");
-    a.textContent = c.title;
-    a.href = "#";
-    a.onclick = () => { location.href = `/player.html?course=${encodeURIComponent(c.id)}&user=${encodeURIComponent(document.getElementById("user").value)}`; };
-    li.append(a, " ");
-    li.insertAdjacentHTML("beforeend", `<small>SCORM ${c.version} · ${c.launch}</small>`);
+    const btn = document.createElement("button");
+    btn.textContent = started.has(c.id) ? "Resume" : "Start";
+    btn.onclick = () => { location.href = playerUrl(learner, c.id); };
+    const title = document.createElement("b");
+    title.textContent = c.title;
+    li.append(btn, " ", title, " ");
+    li.insertAdjacentHTML("beforeend", `<small>SCORM ${c.version}</small>`);
     ul.append(li);
   });
-});
+}
+
+document.getElementById("nameForm").onsubmit = (e) => {
+  e.preventDefault();
+  const name = document.getElementById("name").value.trim();
+  if (!name) return;
+  saveLearner({ id: newLearnerId(), name });
+  render();
+};
+
+document.getElementById("switch").onclick = () => {
+  if (!confirm("Start as a different learner? Your current ID will be forgotten in this browser.")) return;
+  clearLearner();
+  document.getElementById("name").value = "";
+  render();
+};
+
+// Re-fetch progress when coming back with the Back button (page restored from cache)
+window.addEventListener("pageshow", (e) => { if (e.persisted) render(); });
+render();
 </script>
 </body>
 </html>
