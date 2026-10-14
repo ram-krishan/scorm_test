@@ -3,7 +3,8 @@
 // so everything static must be prepared here, inside ./public:
 // 1. Unzip every package in ./packages into ./public/courses/<name>
 // 2. Copy scorm-again into ./public/lib
-// 3. Read each imsmanifest.xml -> ./courses.json (title, SCORM version, launch file, tags from packages/tags.json)
+// 3. Read each imsmanifest.xml -> ./courses.json (title, SCORM version, launch file, tags from packages/tags.json,
+//    download URL from packages/sources.json)
 
 const AdmZip = require("adm-zip");
 const { XMLParser } = require("fast-xml-parser");
@@ -65,7 +66,11 @@ function readManifest(courseId) {
 const TAGS_FILE = path.join(PKG_DIR, "tags.json");
 const tags = fs.existsSync(TAGS_FILE) ? JSON.parse(fs.readFileSync(TAGS_FILE, "utf8")) : {};
 
+// optional URL each downloaded package came from, e.g. { "RuntimeBasicCalls_SCORM12": "https://scorm.com/..." }
+const SOURCES_FILE = path.join(PKG_DIR, "sources.json");
+const sources = fs.existsSync(SOURCES_FILE) ? JSON.parse(fs.readFileSync(SOURCES_FILE, "utf8")) : {};
+
 const courses = fs.readdirSync(COURSE_DIR).map(readManifest).filter(Boolean)
-  .map((c) => ({ ...c, tags: tags[c.id] || [] }));
+  .map((c) => ({ ...c, tags: tags[c.id] || [], source: sources[c.id] || null }));
 fs.writeFileSync(path.join(ROOT, "courses.json"), JSON.stringify(courses, null, 2));
 console.log(`Wrote courses.json (${courses.length} courses)`);

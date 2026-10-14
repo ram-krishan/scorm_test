@@ -125,6 +125,18 @@ async function render() {
     const title = titleWithTags(document.createElement("b"), c);
     li.append(btn, " ", title, " ");
     li.insertAdjacentHTML("beforeend", `<small>SCORM ${c.version}</small>`);
+    // where a downloaded package came from (packages/sources.json)
+    if (c.source) {
+      const a = document.createElement("a");
+      a.href = c.source;
+      a.textContent = "Source";
+      a.title = c.source;
+      a.target = "_blank";
+      a.rel = "noopener";
+      const small = document.createElement("small");
+      small.append(" · ", a);
+      li.append(small);
+    }
     ul.append(li);
   });
 }

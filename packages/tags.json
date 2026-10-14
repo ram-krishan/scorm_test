@@ -1,4 +1,6 @@
 {
   "sample-scorm12": ["AI generated"],
-  "sample-scorm2004": ["AI generated"]
+  "sample-scorm2004": ["AI generated"],
+  "RuntimeBasicCalls_SCORM12": ["Downloaded from SCORM"],
+  "RuntimeBasicCalls_SCORM20043rdEdition": ["Downloaded from SCORM"]
 }

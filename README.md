@@ -21,6 +21,7 @@ It runs locally with Node.js and deploys to Vercel as-is.
 - [Example: Rustici "Golf Examples"](#example-rustici-golf-examples)
 - [Creating your own SCORM course](#creating-your-own-scorm-course)
 - [Tagging courses](#tagging-courses)
+- [Recording where a course came from](#recording-where-a-course-came-from)
 - [How progress is saved](#how-progress-is-saved)
 - [Deploying to Vercel](#deploying-to-vercel)
 - [Project structure](#project-structure)
@@ -119,15 +120,32 @@ https://scorm.com/scorm-explained/technical-scorm/golf-examples/
 
 ### Already included
 
-`packages/RuntimeBasicCalls_SCORM20043rdEdition.zip` is the *SCORM 2004 3rd Edition Basic Run-time* example. It appears in the list as **Golf Explained - Run-time Basic Calls** (SCORM 2004). Start it to see a real-world course:
+Rustici publishes **18** Golf Example packages. Each one was downloaded and run through this kit in a headless browser:
 
-- it sets `cmi.location` as you move between pages
+- launch the course
+- click Next three times
+- Exit and accept saving
+- check the save on the server
+- relaunch and accept resuming
+- check for SCORM errors
+
+**2 of the 18 work fully**, and both are already in `packages/`, tagged **Downloaded from SCORM**:
+
+| Package | SCORM | Shows in the list as |
+|---|---|---|
+| `RuntimeBasicCalls_SCORM12.zip` | 1.2 | Golf Explained - Run-time Basic Calls · `SCORM 1.2` |
+| `RuntimeBasicCalls_SCORM20043rdEdition.zip` | 2004 3rd Ed. | Golf Explained - Run-time Basic Calls · `SCORM 2004` |
+
+Both have the same title, so tell them apart by the SCORM badge. Start one to see a real-world course:
+
+- it sets the bookmark (`lesson_location` / `location`) as you move between pages
 - it asks *"Would you like to save your progress to resume later?"* when you click **Exit**
-- after that, the player saves and returns you to the list, where **Resume** takes you back to the same page
+- after that, the player saves and returns you to the list
+- **Resume** asks *"resume from where you previously left off?"* and reopens the same page
 
-### Download and add another one
+### Download and add one yourself
 
-For example, the SCORM 1.2 version of the same course:
+This is how `RuntimeBasicCalls_SCORM12.zip` was added:
 
 ```bash
 curl -L -o packages/RuntimeBasicCalls_SCORM12.zip \
@@ -136,21 +154,19 @@ curl -L -o packages/RuntimeBasicCalls_SCORM12.zip \
 npm start
 ```
 
-You can also download it in the browser from the Golf Examples page and save it into `packages/`.
+You can also download a package in the browser from the Golf Examples page and save it into `packages/`. To give it a badge, add it to [`packages/tags.json`](#tagging-courses), and record its download URL in [`packages/sources.json`](#recording-where-a-course-came-from).
 
-It appears as **Golf Explained - Run-time Basic Calls** with a **SCORM 1.2** badge. It has the same title as the 2004 one, so use the badge to tell them apart, or [tag it](#tagging-courses).
+### Results for all 18 Golf Examples
 
-### Which Golf Examples work here
-
-| Package | Works? |
+| Package | Result |
 |---|---|
-| `RuntimeBasicCalls_SCORM12.zip`, `RuntimeBasicCalls_SCORM20043rdEdition.zip` | ✅ Single SCO, full course **(recommended)** |
-| `RunTimeAdvancedCalls_SCORM20043rdEdition.zip` | ✅ Single SCO |
-| `RuntimeMinimumCalls_*.zip` | ⚠️ First SCO only (each page is a separate SCO, 18 in total) |
-| `ContentPackagingOneFilePerSCO_*.zip` | ⚠️ First SCO only |
-| `Sequencing*.zip` | ⚠️ First SCO only; sequencing rules are ignored |
-| `ContentPackagingSingleSCO_*.zip`, `ContentPackagingMetadata_*.zip` | ⚠️ These make no SCORM calls (Rustici marks them "not functional"), so nothing is tracked |
-| `*_SCORM11.zip` | ❌ SCORM 1.1 is not supported |
+| `RuntimeBasicCalls_SCORM12.zip`, `RuntimeBasicCalls_SCORM20043rdEdition.zip` | ✅ Works fully (included) |
+| `RunTimeAdvancedCalls_SCORM20043rdEdition.zip` | ⚠️ Navigation and resume work, but its 4 learning objectives fail (SCORM error 401). It expects the LMS to create the `cmi.objectives` defined in the manifest, which this kit doesn't do. |
+| `RuntimeMinimumCalls_SCORM12.zip`, `RuntimeMinimumCalls_SCORM20043rdEdition.zip` | ⚠️ First page only. Each page is a separate SCO (18 in total). |
+| `ContentPackagingOneFilePerSCO_SCORM12.zip`, `..._SCORM20043rdEdition.zip` | ⚠️ First page only. All resources are assets, not SCOs. |
+| `Sequencing*.zip` (6 packages) | ⚠️ First SCO only (5 SCOs each). Sequencing rules are ignored. |
+| `ContentPackagingSingleSCO_*.zip` (3 packages), `ContentPackagingMetadata_SCORM20043rdEdition.zip` | ⚠️ Opens, but makes no SCORM calls (Rustici marks these "not functional"), so nothing is tracked. |
+| `ContentPackagingSingleSCO_SCORM11.zip` | ❌ SCORM 1.1. It has no `imsmanifest.xml`, so it doesn't appear in the list. |
 
 All of them follow the same URL pattern:
 `https://scorm.com/wp-content/assets/golf_examples/PIFS/<file name>.zip`
@@ -334,13 +350,31 @@ To show a badge next to a course title on the list page (for example *AI generat
 {
   "sample-scorm12": ["AI generated"],
   "sample-scorm2004": ["AI generated"],
-  "RuntimeBasicCalls_SCORM12": ["Rustici", "Golf example"]
+  "RuntimeBasicCalls_SCORM12": ["Downloaded from SCORM"],
+  "RuntimeBasicCalls_SCORM20043rdEdition": ["Downloaded from SCORM"]
 }
 ```
 
 - The key is the course ID, which is the zip file name without `.zip`.
 - A course can have several tags.
 - Tags are read at build time, so run `npm start` again or redeploy after editing.
+
+---
+
+## Recording where a course came from
+
+For a package you downloaded, put its download URL in **`packages/sources.json`**. The course list then shows a **Source** link next to the course:
+
+```json
+{
+  "RuntimeBasicCalls_SCORM12": "https://scorm.com/wp-content/assets/golf_examples/PIFS/RuntimeBasicCalls_SCORM12.zip",
+  "RuntimeBasicCalls_SCORM20043rdEdition": "https://scorm.com/wp-content/assets/golf_examples/PIFS/RuntimeBasicCalls_SCORM20043rdEdition.zip"
+}
+```
+
+- The key is the course ID, which is the zip file name without `.zip`.
+- Courses you made yourself don't need an entry.
+- Sources are read at build time, so run `npm start` again or redeploy after editing.
 
 ---
 
@@ -402,7 +436,8 @@ To add a course to the live site, put the zip in `packages/`, commit and push. V
 scorm-test-kit/
 ├── packages/            ← put SCORM .zip files here
 │   ├── *.zip
-│   └── tags.json        ← optional badges per course
+│   ├── tags.json        ← optional badges per course
+│   └── sources.json     ← optional download URL per course
 ├── samples/             ← editable source of the sample courses (zip into packages/ to use)
 ├── public/
 │   ├── index.html       ← course list, learner name/ID, progress table
