@@ -15,6 +15,7 @@
   code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
   .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; margin-left: 6px; border-radius: 999px; background: #ede9fe; color: #5b21b6; vertical-align: middle; }
   button { cursor: pointer; }
+  .error { color: #b91c1c; margin-top: 6px; }
   .link { background: none; border: 0; color: #2563eb; padding: 0; text-decoration: underline; font: inherit; }
 </style>
 </head>
@@ -25,6 +26,8 @@
 <form id="nameForm" class="card" hidden>
   <label>Your name <input id="name" required maxlength="60" autocomplete="name"></label>
   <button>Continue</button>
+  <div><small>Already have a learner ID? Enter it instead of your name to continue where you left off.</small></div>
+  <div id="nameError" class="error" hidden></div>
 </form>
 
 <!-- Step 2: learner known -->
@@ -141,11 +144,29 @@ async function render() {
   });
 }
 
-document.getElementById("nameForm").onsubmit = (e) => {
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// A name starts a new learner; an existing learner ID brings that learner back with their progress
+document.getElementById("nameForm").onsubmit = async (e) => {
   e.preventDefault();
-  const name = document.getElementById("name").value.trim();
-  if (!name) return;
-  saveLearner({ id: newLearnerId(), name });
+  const value = document.getElementById("name").value.trim();
+  const error = document.getElementById("nameError");
+  error.hidden = true;
+  if (!value) return;
+  if (!UUID_RE.test(value)) {
+    saveLearner({ id: newLearnerId(), name: value });
+    return render();
+  }
+  const id = value.toLowerCase();
+  const progress = await fetch(`/api/users/${encodeURIComponent(id)}/progress`).then((r) => r.json());
+  if (!progress.length) {
+    error.textContent = "No saved progress found for this learner ID.";
+    error.hidden = false;
+    return;
+  }
+  // the name the learner used is stored in their saved progress
+  const name = progress.map((p) => p.name).find(Boolean) || id;
+  saveLearner({ id, name });
   render();
 };
 

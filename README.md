@@ -90,6 +90,8 @@ Stop the server with `Ctrl+C`.
 
 Click **Not you?** to switch to a different learner. This forgets the current ID in this browser.
 
+**Coming back on another browser or device?** Enter your learner ID instead of a name. The app finds your saved progress, restores your name and ID, and lists your courses with **Resume**. If no progress is saved for that ID, it shows an error and creates nothing.
+
 ---
 
 ## Adding a SCORM package
