@@ -13,6 +13,7 @@
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; white-space: nowrap; }
   th { background: #f9fafb; font-weight: 600; }
   code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 8px; margin-left: 6px; border-radius: 999px; background: #ede9fe; color: #5b21b6; vertical-align: middle; }
   button { cursor: pointer; }
   .link { background: none; border: 0; color: #2563eb; padding: 0; text-decoration: underline; font: inherit; }
 </style>
@@ -60,6 +61,17 @@ const clearLearner = () => { try { localStorage.removeItem(STORAGE_KEY); } catch
 // e.g. "3b241101-e2bb-4255-8caf-4136c566a962" (needs https or localhost)
 const newLearnerId = () => crypto.randomUUID();
 
+// course title followed by its tags (e.g. "AI generated") as badges
+const titleWithTags = (el, course) => {
+  el.append(course.title);
+  (course.tags || []).forEach((t) => {
+    const tag = document.createElement("span");
+    tag.className = "tag";
+    tag.textContent = t;
+    el.append(tag);
+  });
+  return el;
+};
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
 const cell = (text) => { const td = document.createElement("td"); td.textContent = text; return td; };
 const playerUrl = (learner, courseId) =>
@@ -88,7 +100,8 @@ async function render() {
   tbody.innerHTML = "";
   progress.forEach((p) => {
     const tr = document.createElement("tr");
-    tr.append(cell(p.name || learner.name), cell(learner.id), cell(p.title), cell(p.status),
+    const course = courses.find((c) => c.id === p.courseId) || { title: p.title };
+    tr.append(cell(p.name || learner.name), cell(learner.id), titleWithTags(document.createElement("td"), course), cell(p.status),
               cell(p.score === "" ? "—" : p.score), cell(fmt(p.startedAt)), cell(fmt(p.completedAt)));
     const td = document.createElement("td");
     const btn = document.createElement("button");
@@ -109,8 +122,7 @@ async function render() {
     const btn = document.createElement("button");
     btn.textContent = started.has(c.id) ? "Resume" : "Start";
     btn.onclick = () => { location.href = playerUrl(learner, c.id); };
-    const title = document.createElement("b");
-    title.textContent = c.title;
+    const title = titleWithTags(document.createElement("b"), c);
     li.append(btn, " ", title, " ");
     li.insertAdjacentHTML("beforeend", `<small>SCORM ${c.version}</small>`);
     ul.append(li);
