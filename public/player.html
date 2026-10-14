@@ -44,6 +44,14 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     logLevel: 4 // errors only in console
   };
 
+  // The course calls Terminate / LMSFinish when the learner exits; the final save has already been
+  // queued (sent via sendBeacon, so it survives navigation). Like an LMS, take the learner back to the list.
+  const endSession = (call) => {
+    log(`${call} → saved. Returning to course list…`);
+    document.getElementById("state").textContent += " · session ended";
+    setTimeout(() => { location.href = "/"; }, 1500);
+  };
+
   let api;
   if (course.version === "1.2") {
     api = new Scorm12API(settings);
@@ -52,7 +60,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     api.on("LMSSetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
     api.on("LMSInitialize", () => log("LMSInitialize"));
     api.on("LMSCommit", () => log("LMSCommit → saved"));
-    api.on("LMSFinish", () => log("LMSFinish"));
+    api.on("LMSFinish", () => endSession("LMSFinish"));
   } else {
     api = new Scorm2004API(settings);
     api.loadFromJSON(saved?.cmi || { learner_id: user, learner_name: name });
@@ -60,7 +68,7 @@ const log = (t) => { logEl.insertAdjacentHTML("beforeend", t.replace(/</g, "&lt;
     api.on("SetValue.cmi.*", (el, v) => log(`Set ${el} = ${String(v).slice(0, 80)}`));
     api.on("Initialize", () => log("Initialize"));
     api.on("Commit", () => log("Commit → saved"));
-    api.on("Terminate", () => log("Terminate"));
+    api.on("Terminate", () => endSession("Terminate"));
   }
 
   log(saved ? "Found saved progress — resuming" : "New attempt");
